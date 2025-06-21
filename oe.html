@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BLASTA Sequence Alignment (Simulated)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .blink-cursor { animation: blink 1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .loading-bar {
+      width: 100%; height: 4px; background-color: #e2e8f0; overflow: hidden;
+    }
+    .loading-progress {
+      height: 100%; width: 0%; background-color: #3b82f6;
+      animation: loading 2s linear infinite;
+    }
+    @keyframes loading {
+      0% { width: 0%; margin-left: 0; }
+      50% { width: 100%; margin-left: 0; }
+      100% { width: 0%; margin-left: 100%; }
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+  <header class="bg-blue-700 text-white py-4">
+    <div class="container mx-auto px-4">
+      <h1 class="text-2xl font-bold">BLASTA Sequence Alignment (Simulated)</h1>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 py-6">
+    <div class="bg-white rounded-lg shadow p-6 space-y-6">
+      <!-- Input Panel -->
+      <div>
+        <label class="block text-sm font-medium mb-1">Query Sequence</label>
+        <textarea id="queryInput" class="w-full border p-3 rounded-md h-32" placeholder="Enter DNA or protein sequence..."></textarea>
+      </div>
+      <div class="grid md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Sequence Type</label>
+          <select id="sequenceType" class="w-full border p-2 rounded">
+            <option value="dna">DNA</option>
+            <option value="protein">Protein</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Database</label>
+          <select id="database" class="w-full border p-2 rounded">
+            <option value="nt">NCBI nt</option>
+            <option value="nr">NCBI nr</option>
+            <option value="refseq_rna">RefSeq RNA</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button id="runButton" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Run BLASTA</button>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div id="loadingSection" class="hidden">
+        <div class="loading-bar"><div class="loading-progress"></div></div>
+        <p class="text-center text-gray-500 mt-2">Running alignment<span class="blink-cursor">_</span></p>
+      </div>
+
+      <!-- Results -->
+      <div id="resultSection" class="hidden">
+        <h2 class="text-lg font-semibold text-gray-800 mb-2">Results</h2>
+        <div class="grid md:grid-cols-3 gap-4 text-center mb-6">
+          <div>
+            <div class="text-xl font-bold text-blue-600" id="matchCount">-</div>
+            <div class="text-sm text-gray-600">Matches Found</div>
+          </div>
+          <div>
+            <div class="text-xl font-bold text-blue-600" id="eValueBest">-</div>
+            <div class="text-sm text-gray-600">Best E-value</div>
+          </div>
+          <div>
+            <div class="text-xl font-bold text-blue-600" id="identityBest">-</div>
+            <div class="text-sm text-gray-600">Best Identity</div>
+          </div>
+        </div>
+
+        <canvas id="alignmentChart" class="w-full h-64 mb-6"></canvas>
+
+        <table class="w-full text-sm text-left border">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="px-3 py-2 border">Accession</th>
+              <th class="px-3 py-2 border">Description</th>
+              <th class="px-3 py-2 border">E-value</th>
+              <th class="px-3 py-2 border">Identity</th>
+              <th class="px-3 py-2 border">Score</th>
+            </tr>
+          </thead>
+          <tbody id="resultsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const runButton = document.getElementById("runButton");
+    const loading = document.getElementById("loadingSection");
+    const results = document.getElementById("resultSection");
+    const matchCountEl = document.getElementById("matchCount");
+    const eValueBestEl = document.getElementById("eValueBest");
+    const identityBestEl = document.getElementById("identityBest");
+    const resultsTable = document.getElementById("resultsTable");
+    const chartCtx = document.getElementById("alignmentChart").getContext("2d");
+
+    let chart; // Chart.js instance
+
+    runButton.addEventListener("click", () => {
+      const query = document.getElementById("queryInput").value.trim();
+      if (!query) {
+        alert("Please enter a sequence.");
+        return;
+      }
+
+      // Simulate loading
+      loading.classList.remove("hidden");
+      results.classList.add("hidden");
+
+      setTimeout(() => {
+        loading.classList.add("hidden");
+        results.classList.remove("hidden");
+
+        // Simulated results
+        const matchCount = Math.floor(Math.random() * 50) + 10;
+        const bestE = (Math.random() * 1e-4).toExponential(2);
+        const bestId = Math.floor(Math.random() * 30) + 70;
+
+        matchCountEl.textContent = matchCount;
+        eValueBestEl.textContent = bestE;
+        identityBestEl.textContent = bestId + "%";
+
+        // Table data
+        resultsTable.innerHTML = "";
+        const descriptions = ["Ribosomal protein", "DNA polymerase", "Hypothetical protein", "Kinase domain", "Transporter"];
+        for (let i = 0; i < matchCount; i++) {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td class="border px-3 py-2">XP_${Math.floor(Math.random() * 90000000 + 10000000)}</td>
+            <td class="border px-3 py-2">${descriptions[Math.floor(Math.random() * descriptions.length)]}</td>
+            <td class="border px-3 py-2">${(Math.random() * 1e-3).toExponential(1)}</td>
+            <td class="border px-3 py-2">${Math.floor(Math.random() * 30 + 65)}%</td>
+            <td class="border px-3 py-2">${Math.floor(Math.random() * 500 + 150)}</td>
+          `;
+          resultsTable.appendChild(row);
+        }
+
+        // Chart
+        const scores = Array.from({ length: 50 }, () => Math.floor(Math.random() * 100) + 50);
+        if (chart) chart.destroy();
+        chart = new Chart(chartCtx, {
+          type: "line",
+          data: {
+            labels: Array.from({ length: 50 }, (_, i) => i + 1),
+            datasets: [{
+              label: "Alignment Score",
+              data: scores,
+              borderColor: "#3b82f6",
+              backgroundColor: "rgba(59,130,246,0.1)",
+              tension: 0.3,
+              fill: true
+            }]
+          },
+          options: {
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { title: { display: true, text: "Sequence Position" }},
+              y: { title: { display: true, text: "Alignment Score" }}
+            }
+          }
+        });
+
+      }, 3000);
+    });
+  </script>
+</body>
+</html>
